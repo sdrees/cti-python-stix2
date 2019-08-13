@@ -1,5 +1,4 @@
-"""Functions for working with STIX 2.0 object markings.
-"""
+"""Functions for working with STIX2 object markings."""
 
 from stix2 import exceptions
 from stix2.markings import utils
@@ -18,12 +17,12 @@ def get_markings(obj):
             markings are present in `object_marking_refs`.
 
     """
-    return obj.get("object_marking_refs", [])
+    return obj.get('object_marking_refs', [])
 
 
 def add_markings(obj, marking):
     """
-    Appends an object level marking to the object_marking_refs collection.
+    Append an object level marking to the object_marking_refs collection.
 
     Args:
         obj: A SDO or SRO object.
@@ -35,14 +34,14 @@ def add_markings(obj, marking):
     """
     marking = utils.convert_to_marking_list(marking)
 
-    object_markings = set(obj.get("object_marking_refs", []) + marking)
+    object_markings = set(obj.get('object_marking_refs', []) + marking)
 
-    return new_version(obj, object_marking_refs=list(object_markings))
+    return new_version(obj, object_marking_refs=list(object_markings), allow_custom=True)
 
 
 def remove_markings(obj, marking):
     """
-    Removes object level marking from the object_marking_refs collection.
+    Remove an object level marking from the object_marking_refs collection.
 
     Args:
         obj: A SDO or SRO object.
@@ -59,24 +58,24 @@ def remove_markings(obj, marking):
     """
     marking = utils.convert_to_marking_list(marking)
 
-    object_markings = obj.get("object_marking_refs", [])
+    object_markings = obj.get('object_marking_refs', [])
 
     if not object_markings:
         return obj
 
-    if any(x not in obj["object_marking_refs"] for x in marking):
+    if any(x not in obj['object_marking_refs'] for x in marking):
         raise exceptions.MarkingNotFoundError(obj, marking)
 
     new_markings = [x for x in object_markings if x not in marking]
     if new_markings:
-        return new_version(obj, object_marking_refs=new_markings)
+        return new_version(obj, object_marking_refs=new_markings, allow_custom=True)
     else:
-        return new_version(obj, object_marking_refs=None)
+        return new_version(obj, object_marking_refs=None, allow_custom=True)
 
 
 def set_markings(obj, marking):
     """
-    Removes all object level markings and appends new object level markings to
+    Remove all object level markings and append new object level markings to
     the collection. Refer to `clear_markings` and `add_markings` for details.
 
     Args:
@@ -94,7 +93,7 @@ def set_markings(obj, marking):
 
 def clear_markings(obj):
     """
-    Removes all object level markings from the object_marking_refs collection.
+    Remove all object level markings from the object_marking_refs collection.
 
     Args:
         obj: A SDO or SRO object.
@@ -103,12 +102,12 @@ def clear_markings(obj):
         A new version of the given SDO or SRO with object_marking_refs cleared.
 
     """
-    return new_version(obj, object_marking_refs=None)
+    return new_version(obj, object_marking_refs=None, allow_custom=True)
 
 
 def is_marked(obj, marking=None):
     """
-    Checks if SDO or SRO is marked by any marking or by specific marking(s).
+    Check if SDO or SRO is marked by any marking or by specific marking(s).
 
     Args:
         obj: A SDO or SRO object.
@@ -124,7 +123,7 @@ def is_marked(obj, marking=None):
 
     """
     marking = utils.convert_to_marking_list(marking)
-    object_markings = obj.get("object_marking_refs", [])
+    object_markings = obj.get('object_marking_refs', [])
 
     if marking:
         return any(x in object_markings for x in marking)

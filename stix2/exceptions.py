@@ -1,5 +1,4 @@
-"""STIX 2 error classes.
-"""
+"""STIX2 Error Classes."""
 
 
 class STIXError(Exception):
@@ -30,8 +29,10 @@ class MissingPropertiesError(STIXError, ValueError):
 
     def __str__(self):
         msg = "No values for required properties for {0}: ({1})."
-        return msg.format(self.cls.__name__,
-                          ", ".join(x for x in self.properties))
+        return msg.format(
+            self.cls.__name__,
+            ", ".join(x for x in self.properties),
+        )
 
 
 class ExtraPropertiesError(STIXError, TypeError):
@@ -44,8 +45,10 @@ class ExtraPropertiesError(STIXError, TypeError):
 
     def __str__(self):
         msg = "Unexpected properties for {0}: ({1})."
-        return msg.format(self.cls.__name__,
-                          ", ".join(x for x in self.properties))
+        return msg.format(
+            self.cls.__name__,
+            ", ".join(x for x in self.properties),
+        )
 
 
 class ImmutableError(STIXError, ValueError):
@@ -110,8 +113,10 @@ class MutuallyExclusivePropertiesError(STIXError, TypeError):
 
     def __str__(self):
         msg = "The ({1}) properties for {0} are mutually exclusive."
-        return msg.format(self.cls.__name__,
-                          ", ".join(x for x in self.properties))
+        return msg.format(
+            self.cls.__name__,
+            ", ".join(x for x in self.properties),
+        )
 
 
 class DependentPropertiesError(STIXError, TypeError):
@@ -124,8 +129,10 @@ class DependentPropertiesError(STIXError, TypeError):
 
     def __str__(self):
         msg = "The property dependencies for {0}: ({1}) are not met."
-        return msg.format(self.cls.__name__,
-                          ", ".join(name for x in self.dependencies for name in x))
+        return msg.format(
+            self.cls.__name__,
+            ", ".join(name for x in self.dependencies for name in x),
+        )
 
 
 class AtLeastOnePropertyError(STIXError, TypeError):
@@ -138,8 +145,10 @@ class AtLeastOnePropertyError(STIXError, TypeError):
 
     def __str__(self):
         msg = "At least one of the ({1}) properties for {0} must be populated."
-        return msg.format(self.cls.__name__,
-                          ", ".join(x for x in self.properties))
+        return msg.format(
+            self.cls.__name__,
+            ", ".join(x for x in self.properties),
+        )
 
 
 class RevokeError(STIXError, ValueError):
@@ -161,6 +170,13 @@ class ParseError(STIXError, ValueError):
 
     def __init__(self, msg):
         super(ParseError, self).__init__(msg)
+
+
+class CustomContentError(STIXError, ValueError):
+    """Custom STIX Content (SDO, Observable, Extension, etc.) detected."""
+
+    def __init__(self, msg):
+        super(CustomContentError, self).__init__(msg)
 
 
 class InvalidSelectorError(STIXError, AssertionError):
@@ -187,3 +203,16 @@ class MarkingNotFoundError(STIXError, AssertionError):
     def __str__(self):
         msg = "Marking {0} was not found in {1}!"
         return msg.format(self.key, self.cls.__class__.__name__)
+
+
+class TLPMarkingDefinitionError(STIXError, AssertionError):
+    """Marking violation. The marking-definition for TLP MUST follow the mandated instances from the spec."""
+
+    def __init__(self, user_obj, spec_obj):
+        super(TLPMarkingDefinitionError, self).__init__()
+        self.user_obj = user_obj
+        self.spec_obj = spec_obj
+
+    def __str__(self):
+        msg = "Marking {0} does not match spec marking {1}!"
+        return msg.format(self.user_obj, self.spec_obj)

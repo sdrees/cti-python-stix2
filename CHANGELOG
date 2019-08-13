@@ -1,6 +1,100 @@
 CHANGELOG
 =========
 
+1.1.3 - 2019-08-12
+
+* #258 Ignores empty values for optional fields
+* #259 Adds support for lang granular markings
+* #261 Prevents instantiation or serialization of TLP marking-definitions that don't follow the spec
+* #262 Supports actual objects in _valid_refs instead of just strings
+* #264 Supports accessing objects in bundles via STIX Object IDs
+* #274 Fixes bug parsing bundle containing custom objects
+
+1.1.2 - 2019-02-13
+
+* #86 Adds helper function to Location objects to generate a URL to the location in an online map engine.
+
+1.1.1 - 2019-01-11
+
+* #234 Update documentation structure to better navigate between v20/v21 objects
+* #232 FileSystemStore now raises an exception if you attempt to overwrite an existing file
+* #236 Fix a serialization problem with the WindowsRegistryKey observable object
+* #238 Fix a problem with the LanguageContent object not allowing its creation with an empty dictionary
+
+1.1.0 - 2018-12-11
+
+- Most (if not all) STIX 2.1 SDOs/SROs and core objects have been implemented according to the latest CSD/WD document
+- There is an implementation for the conversion scales
+- #196, #193 Removing duplicate code for: properties, registering objects, parsing objects, custom objects
+- #80, #197 Most (if not all) tests created for v20 are also implemented for v21
+- #189 Added extra checks for the pre-commit tool
+- #202 It is now possible to pass a Bundle into add() method in Memory datastores
+
+1.0.4 - 2018-11-15
+
+* #225 MemorySource fix to support custom objects
+* #212 More consistency in Observable extensions behavior/error messages
+
+1.0.3 - 2018-10-31
+
+* #187 Pickle proof objects
+* #181 Improvements to error handling for datastores
+* #184, #192 Fix "pretty" JSON serialization problems
+* #195 Fix wrong property name for raster-image-ext
+* #201 UUIDv4 enforcement on identifiers
+* #203 New filter option "contains" for datastores
+* #207 Add documentation on patterning
+* #213 Python 3.7 support
+* #214 Support for multiple object versions in MemoryStore
+
+1.0.2 - 2018-05-18
+
+* Fixes bugs when using allow_custom (#176, #179).
+
+1.0.1 - 2018-04-27
+
+* Fixes bug with incorrect TAXII parameters (#169).
+* Fixes bug with constructing patterns (#171).
+
+1.0.0 - 2018-04-16
+
+* Adds the Workbench layer API.
+* Adds checks to ensure valid type names are provided.
+* Supports parsing generic custom STIX 2 content without needing to create classes for them.
+* Fixes "Not JSON serializable" error in TAXIICollectionStore.
+* Fixes bug with parsing JSON files in FileSystemStore.
+* Fixes bug with Filters in TAXIICollectionStore.
+* Fixes minor bugs in the patterning API.
+* Fixes bug with ListProperty containing DictionaryProperty.
+* Fixes bug with parsing observables.
+* Fixes bug involving optional properties with default values.
+* Changes custom observable extensions to require properties to be defined as a list of tuples rather than a dictionary.
+* Changes Filters to allow passing a dictionary as a filter value.
+* Changes `get_dict` to a private function.
+* `taxii2-client` is now an optional dependency.
+
+0.5.1 - 2018-03-06
+
+* Fixes issue with PyPI.
+
+0.5.0 - 2018-03-06
+
+* Adds functions to dereference relationships.
+* Adds a function to get an object's type from its ID.
+* Reorganizes DataStore api, renaming: stix2.sources to stix2.datastore.
+* Fixes various bugs involving CustomMarking, creating new versions of objects
+  with custom properties, and a missing IntrusionSet property.
+* Drops Python 3.3 support.
+
+0.4.0 - 2017-11-13
+
+* Adds `creator_of` function to easily get the Identity that created an object,
+  and a `serialize` function for fast serialization without sorting properties.
+* Fixes bugs with DataStores and with adding custom STIX content to Bundles.
+* Supports filtering on any property, not just common properties.
+* Includes internal changes to make it easier to support multiple versions of
+  the STIX specification.
+
 0.3.0 - 2017-10-06
 
 * Adds data stores, object factory, and the environment layer.

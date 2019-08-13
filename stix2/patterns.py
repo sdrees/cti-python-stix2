@@ -1,13 +1,25 @@
-"""Classes to aid in working with the STIX 2 patterning language.
-"""
+"""Classes to aid in working with the STIX 2 patterning language."""
 
 import base64
 import binascii
+import datetime
 import re
+
+import six
+
+from .utils import parse_into_datetime
 
 
 def escape_quotes_and_backslashes(s):
     return s.replace(u'\\', u'\\\\').replace(u"'", u"\\'")
+
+
+def quote_if_needed(x):
+    if isinstance(x, six.string_types):
+        if x.find("-") != -1:
+            if not x.startswith("'"):
+                return "'" + x + "'"
+    return x
 
 
 class _Constant(object):
@@ -15,22 +27,42 @@ class _Constant(object):
 
 
 class StringConstant(_Constant):
-    def __init__(self, value):
+    """Pattern string constant
+
+    Args:
+        value (str): string value
+    """
+
+    def __init__(self, value, from_parse_tree=False):
+        self.needs_to_be_quoted = not from_parse_tree
         self.value = value
 
     def __str__(self):
-        return "'%s'" % escape_quotes_and_backslashes(self.value)
+        return "'%s'" % (escape_quotes_and_backslashes(self.value) if self.needs_to_be_quoted else self.value)
 
 
 class TimestampConstant(_Constant):
+    """Pattern timestamp constant
+
+    Args:
+        value (datetime.datetime OR str): if string, must be a timestamp string
+    """
     def __init__(self, value):
-        self.value = value
+        try:
+            self.value = parse_into_datetime(value)
+        except Exception:
+            raise ValueError("Must be a datetime object or timestamp string.")
 
     def __str__(self):
-        return "t'%s'" % escape_quotes_and_backslashes(self.value)
+        return "t%s" % repr(self.value)
 
 
 class IntegerConstant(_Constant):
+    """Pattern interger constant
+
+    Args:
+        value (int): integer value
+    """
     def __init__(self, value):
         try:
             self.value = int(value)
@@ -46,34 +78,46 @@ class FloatConstant(_Constant):
         try:
             self.value = float(value)
         except Exception:
-            raise ValueError("must be an float.")
+            raise ValueError("must be a float.")
 
     def __str__(self):
         return "%s" % self.value
 
 
 class BooleanConstant(_Constant):
+    """Pattern boolean constant
+
+    Args:
+       value (str OR int):
+           (str) 'true', 't' for True; 'false', 'f' for False
+           (int) 1 for True; 0 for False
+    """
     def __init__(self, value):
         if isinstance(value, bool):
             self.value = value
+            return
 
-        trues = ['true', 't']
-        falses = ['false', 'f']
+        trues = ['true', 't', '1']
+        falses = ['false', 'f', '0']
         try:
             if value.lower() in trues:
                 self.value = True
-            if value.lower() in falses:
+                return
+            elif value.lower() in falses:
                 self.value = False
+                return
         except AttributeError:
             if value == 1:
                 self.value = True
-            if value == 0:
+                return
+            elif value == 0:
                 self.value = False
+                return
 
         raise ValueError("must be a boolean value.")
 
     def __str__(self):
-        return "%s" % self.value
+        return str(self.value).lower()
 
 
 _HASH_REGEX = {
@@ -95,18 +139,37 @@ _HASH_REGEX = {
 
 
 class HashConstant(StringConstant):
+    """Pattern hash constant
+
+    Args:
+        value (str): hash value
+        type (str): hash algorithm name. Supported hash algorithms:
+            "MD5", "MD6", RIPEMD160", "SHA1", "SHA224", "SHA256",
+            "SHA384", "SHA512", "SHA3224", "SHA3256", "SHA3384",
+            "SHA3512", "SSDEEP", "WHIRLPOOL"
+    """
     def __init__(self, value, type):
         key = type.upper().replace('-', '')
         if key in _HASH_REGEX:
             vocab_key = _HASH_REGEX[key][1]
             if not re.match(_HASH_REGEX[key][0], value):
                 raise ValueError("'%s' is not a valid %s hash" % (value, vocab_key))
-            self.value = value
+            super(HashConstant, self).__init__(value)
 
 
 class BinaryConstant(_Constant):
+    """Pattern binary constant
 
-    def __init__(self, value):
+    Args:
+        value (str): base64 encoded string value
+    """
+
+    def __init__(self, value, from_parse_tree=False):
+        # support with or without a 'b'
+        if from_parse_tree:
+            m = re.match("^b'(.+)'$", value)
+            if m:
+                value = m.group(1)
         try:
             base64.b64decode(value)
             self.value = value
@@ -118,34 +181,65 @@ class BinaryConstant(_Constant):
 
 
 class HexConstant(_Constant):
-    def __init__(self, value):
-        if not re.match('^([a-fA-F0-9]{2})+$', value):
-            raise ValueError("must contain an even number of hexadecimal characters")
-        self.value = value
+    """Pattern hexadecimal constant
+
+    Args:
+        value (str): hexadecimal value
+    """
+    def __init__(self, value, from_parse_tree=False):
+        # support with or without an 'h'
+        if not from_parse_tree and re.match('^([a-fA-F0-9]{2})+$', value):
+            self.value = value
+        else:
+            m = re.match("^h'(([a-fA-F0-9]{2})+)'$", value)
+            if m:
+                self.value = m.group(1)
+            else:
+                raise ValueError("must contain an even number of hexadecimal characters")
 
     def __str__(self):
         return "h'%s'" % self.value
 
 
 class ListConstant(_Constant):
+    """Pattern list constant
+
+    Args:
+        value (list): list of values
+    """
     def __init__(self, values):
-        self.value = values
+        # handle _Constants or make a _Constant
+        self.value = [x if isinstance(x, _Constant) else make_constant(x) for x in values]
 
     def __str__(self):
-        return "(" + ", ".join([("%s" % x) for x in self.value]) + ")"
+        return "(" + ", ".join(["%s" % x for x in self.value]) + ")"
 
 
 def make_constant(value):
+    """Convert value to Pattern constant, best effort attempt
+    at determining root value type and corresponding conversion
+
+    Args:
+        value: value to convert to Pattern constant
+    """
+    if isinstance(value, _Constant):
+        return value
+
+    try:
+        return parse_into_datetime(value)
+    except ValueError:
+        pass
+
     if isinstance(value, str):
         return StringConstant(value)
+    elif isinstance(value, bool):
+        return BooleanConstant(value)
     elif isinstance(value, int):
         return IntegerConstant(value)
     elif isinstance(value, float):
         return FloatConstant(value)
     elif isinstance(value, list):
         return ListConstant(value)
-    elif isinstance(value, bool):
-        return BooleanConstant(value)
     else:
         raise ValueError("Unable to create a constant from %s" % value)
 
@@ -159,66 +253,103 @@ class _ObjectPathComponent(object):
             parse1 = component_name.split("[")
             return ListObjectPathComponent(parse1[0], parse1[1][:-1])
         else:
-            return BasicObjectPathComponent(component_name)
+            return BasicObjectPathComponent(component_name, False)
+
+    def __str__(self):
+        return quote_if_needed(self.property_name)
 
 
 class BasicObjectPathComponent(_ObjectPathComponent):
-    def __init__(self, property_name, is_key=False):
+    """Basic object path component (for an observation or expression)
+
+    By "Basic", implies that the object path component is not a
+    list, object reference or futher referenced property, i.e. terminal
+    component
+
+    Args:
+        property_name (str): object property name
+        is_key (bool): is dictionary key, default: False
+    """
+    def __init__(self, property_name, is_key):
         self.property_name = property_name
         # TODO: set is_key to True if this component is a dictionary key
         # self.is_key = is_key
 
-    def __str__(self):
-        return self.property_name
-
 
 class ListObjectPathComponent(_ObjectPathComponent):
+    """List object path component (for an observation or expression)
+
+    Args:
+        property_name (str): list object property name
+        index (int): index of the list property's value that is specified
+    """
     def __init__(self, property_name, index):
         self.property_name = property_name
         self.index = index
 
     def __str__(self):
-        return "%s[%s]" % (self.property_name, self.index)
+        return "%s[%s]" % (quote_if_needed(self.property_name), self.index)
 
 
 class ReferenceObjectPathComponent(_ObjectPathComponent):
+    """Reference object path component (for an observation or expression)
+
+    Args:
+        reference_property_name (str): reference object property name
+    """
     def __init__(self, reference_property_name):
         self.property_name = reference_property_name
 
-    def __str__(self):
-        return self.property_name
-
 
 class ObjectPath(object):
+    """Pattern operand object (property) path
+
+    Args:
+        object_type_name (str): name of object type for corresponding object path component
+        property_path (_ObjectPathComponent OR str): object path
+    """
     def __init__(self, object_type_name, property_path):
         self.object_type_name = object_type_name
-        self.property_path = [x if isinstance(x, _ObjectPathComponent) else
-                              _ObjectPathComponent.create_ObjectPathComponent(x)
-                              for x in property_path]
+        self.property_path = [
+            x if isinstance(x, _ObjectPathComponent) else
+            _ObjectPathComponent.create_ObjectPathComponent(x)
+            for x in property_path
+        ]
 
     def __str__(self):
-        return "%s:%s" % (self.object_type_name, ".".join(["%s" % x for x in self.property_path]))
+        return "%s:%s" % (self.object_type_name, ".".join(["%s" % quote_if_needed(x) for x in self.property_path]))
 
     def merge(self, other):
+        """Extend the object property with that of the supplied object property path"""
         self.property_path.extend(other.property_path)
         return self
 
     @staticmethod
     def make_object_path(lhs):
+        """Create ObjectPath from string encoded object path
+
+        Args:
+            lhs (str): object path of left-hand-side component of expression
+        """
         path_as_parts = lhs.split(":")
         return ObjectPath(path_as_parts[0], path_as_parts[1].split("."))
 
 
 class _PatternExpression(object):
-
-    @staticmethod
-    def escape_quotes_and_backslashes(s):
-        return s.replace(u'\\', u'\\\\').replace(u"'", u"\\'")
+    pass
 
 
 class _ComparisonExpression(_PatternExpression):
+    """Pattern Comparison Expression
+
+    Args:
+        operator (str): operator of comparison expression
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, operator, lhs, rhs, negated=False):
-        if operator == "=" and isinstance(rhs, ListConstant):
+        if operator == "=" and isinstance(rhs, (ListConstant, list)):
             self.operator = "IN"
         else:
             self.operator = operator
@@ -234,13 +365,6 @@ class _ComparisonExpression(_PatternExpression):
         self.root_type = self.lhs.object_type_name
 
     def __str__(self):
-        # if isinstance(self.rhs, list):
-        #     final_rhs = []
-        #     for r in self.rhs:
-        #         final_rhs.append("'" + self.escape_quotes_and_backslashes("%s" % r) + "'")
-        #     rhs_string = "(" + ", ".join(final_rhs) + ")"
-        # else:
-        #     rhs_string = self.rhs
         if self.negated:
             return "%s NOT %s %s" % (self.lhs, self.operator, self.rhs)
         else:
@@ -248,56 +372,134 @@ class _ComparisonExpression(_PatternExpression):
 
 
 class EqualityComparisonExpression(_ComparisonExpression):
+    """Pattern Equality Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(EqualityComparisonExpression, self).__init__("=", lhs, rhs, negated)
 
 
 class GreaterThanComparisonExpression(_ComparisonExpression):
+    """Pattern Greater-than Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(GreaterThanComparisonExpression, self).__init__(">", lhs, rhs, negated)
 
 
 class LessThanComparisonExpression(_ComparisonExpression):
+    """Pattern Less-than Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(LessThanComparisonExpression, self).__init__("<", lhs, rhs, negated)
 
 
 class GreaterThanEqualComparisonExpression(_ComparisonExpression):
+    """Pattern Greater-Than-or-Equal-to Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(GreaterThanEqualComparisonExpression, self).__init__(">=", lhs, rhs, negated)
 
 
 class LessThanEqualComparisonExpression(_ComparisonExpression):
+    """Pattern Less-Than-or-Equal-to Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
+
     def __init__(self, lhs, rhs, negated=False):
         super(LessThanEqualComparisonExpression, self).__init__("<=", lhs, rhs, negated)
 
 
 class InComparisonExpression(_ComparisonExpression):
+    """'in' Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(InComparisonExpression, self).__init__("IN", lhs, rhs, negated)
 
 
 class LikeComparisonExpression(_ComparisonExpression):
+    """'like' Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
+
     def __init__(self, lhs, rhs, negated=False):
         super(LikeComparisonExpression, self).__init__("LIKE", lhs, rhs, negated)
 
 
 class MatchesComparisonExpression(_ComparisonExpression):
+    """'Matches' Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
     def __init__(self, lhs, rhs, negated=False):
         super(MatchesComparisonExpression, self).__init__("MATCHES", lhs, rhs, negated)
 
 
 class IsSubsetComparisonExpression(_ComparisonExpression):
-        def __init__(self, lhs, rhs, negated=False):
-            super(IsSubsetComparisonExpression, self).__init__("ISSUBSET", lhs, rhs, negated)
+    """ 'is subset' Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
+    def __init__(self, lhs, rhs, negated=False):
+        super(IsSubsetComparisonExpression, self).__init__("ISSUBSET", lhs, rhs, negated)
 
 
 class IsSupersetComparisonExpression(_ComparisonExpression):
-        def __init__(self, lhs, rhs, negated=False):
-            super(IsSupersetComparisonExpression, self).__init__("ISSUPERSET", lhs, rhs, negated)
+    """ 'is super set' Comparison Expression
+
+    Args:
+        lhs (ObjectPath OR str): object path of left-hand-side component of expression
+        rhs (ObjectPath OR str): object path of right-hand-side component of expression
+        negated (bool): comparison expression negated. Default: False
+    """
+    def __init__(self, lhs, rhs, negated=False):
+        super(IsSupersetComparisonExpression, self).__init__("ISSUPERSET", lhs, rhs, negated)
 
 
 class _BooleanExpression(_PatternExpression):
+    """Boolean Pattern Expression
+
+    Args:
+        operator (str): boolean operator
+        operands (list): boolean operands
+    """
     def __init__(self, operator, operands):
         self.operator = operator
         self.operands = []
@@ -313,21 +515,37 @@ class _BooleanExpression(_PatternExpression):
     def __str__(self):
         sub_exprs = []
         for o in self.operands:
-            sub_exprs.append("%s" % o)
+            sub_exprs.append(str(o))
         return (" " + self.operator + " ").join(sub_exprs)
 
 
 class AndBooleanExpression(_BooleanExpression):
+    """'AND' Boolean Pattern Expression. Only use if both operands are of
+    the same root object.
+
+    Args:
+        operands (list): AND operands
+    """
     def __init__(self, operands):
         super(AndBooleanExpression, self).__init__("AND", operands)
 
 
 class OrBooleanExpression(_BooleanExpression):
+    """'OR' Boolean Pattern Expression. Only use if both operands are of the same root object
+
+    Args:
+        operands (list): OR operands
+    """
     def __init__(self, operands):
         super(OrBooleanExpression, self).__init__("OR", operands)
 
 
 class ObservationExpression(_PatternExpression):
+    """Observation Expression
+
+    Args:
+        operand (str): observation expression operand
+    """
     def __init__(self, operand):
         self.operand = operand
 
@@ -336,6 +554,12 @@ class ObservationExpression(_PatternExpression):
 
 
 class _CompoundObservationExpression(_PatternExpression):
+    """Compound Observation Expression
+
+    Args:
+        operator (str): compound observation operator
+        operands (str): compound observation operands
+    """
     def __init__(self, operator, operands):
         self.operator = operator
         self.operands = operands
@@ -348,21 +572,41 @@ class _CompoundObservationExpression(_PatternExpression):
 
 
 class AndObservationExpression(_CompoundObservationExpression):
+    """'AND' Compound Observation Pattern Expression
+
+    Args:
+        operands (str): compound observation operands
+    """
     def __init__(self, operands):
         super(AndObservationExpression, self).__init__("AND", operands)
 
 
 class OrObservationExpression(_CompoundObservationExpression):
+    """Pattern 'OR' Compound Observation Expression
+
+    Args:
+        operands (str): compound observation operands
+    """
     def __init__(self, operands):
         super(OrObservationExpression, self).__init__("OR", operands)
 
 
 class FollowedByObservationExpression(_CompoundObservationExpression):
+    """Pattern 'Followed by' Compound Observation Expression
+
+    Args:
+        operands (str): compound observation operands
+    """
     def __init__(self, operands):
         super(FollowedByObservationExpression, self).__init__("FOLLOWEDBY", operands)
 
 
 class ParentheticalExpression(_PatternExpression):
+    """Pattern Parenthetical Observation Expression
+
+    Args:
+       exp (str): observation expression
+    """
     def __init__(self, exp):
         self.expression = exp
         if hasattr(exp, "root_type"):
@@ -377,19 +621,29 @@ class _ExpressionQualifier(_PatternExpression):
 
 
 class RepeatQualifier(_ExpressionQualifier):
+    """Pattern Repeat Qualifier
+
+    Args:
+        times_to_repeat (int): times the qualifiers is repeated
+    """
     def __init__(self, times_to_repeat):
         if isinstance(times_to_repeat, IntegerConstant):
             self.times_to_repeat = times_to_repeat
         elif isinstance(times_to_repeat, int):
             self.times_to_repeat = IntegerConstant(times_to_repeat)
         else:
-            raise ValueError("%s is not a valid argument for a Within Qualifier" % times_to_repeat)
+            raise ValueError("%s is not a valid argument for a Repeat Qualifier" % times_to_repeat)
 
     def __str__(self):
         return "REPEATS %s TIMES" % self.times_to_repeat
 
 
 class WithinQualifier(_ExpressionQualifier):
+    """Pattern 'Within' Qualifier
+
+    Args:
+        number_of_seconds (int): seconds value for 'within' qualifier
+    """
     def __init__(self, number_of_seconds):
         if isinstance(number_of_seconds, IntegerConstant):
             self.number_of_seconds = number_of_seconds
@@ -403,25 +657,37 @@ class WithinQualifier(_ExpressionQualifier):
 
 
 class StartStopQualifier(_ExpressionQualifier):
+    """Pattern Start/Stop Qualifier
+
+    Args:
+        start_time (TimestampConstant OR datetime.date): start timestamp for qualifier
+        stop_time (TimestampConstant OR datetime.date): stop timestamp for qualifier
+    """
     def __init__(self, start_time, stop_time):
-        if isinstance(start_time, IntegerConstant):
+        if isinstance(start_time, TimestampConstant):
             self.start_time = start_time
-        elif isinstance(start_time, int):
-            self.start_time = IntegerConstant(start_time)
+        elif isinstance(start_time, datetime.date):
+            self.start_time = TimestampConstant(start_time)
         else:
-            raise ValueError("%s is not a valid argument for a Within Qualifier" % start_time)
-        if isinstance(stop_time, IntegerConstant):
+            raise ValueError("%s is not a valid argument for a Start/Stop Qualifier" % start_time)
+        if isinstance(stop_time, TimestampConstant):
             self.stop_time = stop_time
-        elif isinstance(stop_time, int):
-            self.stop_time = IntegerConstant(stop_time)
+        elif isinstance(stop_time, datetime.date):
+            self.stop_time = TimestampConstant(stop_time)
         else:
-            raise ValueError("%s is not a valid argument for a Within Qualifier" % stop_time)
+            raise ValueError("%s is not a valid argument for a Start/Stop Qualifier" % stop_time)
 
     def __str__(self):
         return "START %s STOP %s" % (self.start_time, self.stop_time)
 
 
 class QualifiedObservationExpression(_PatternExpression):
+    """Pattern Qualified Observation Expression
+
+    Args:
+        observation_expression (PatternExpression OR _CompoundObservationExpression OR ): pattern expression
+        qualifier (_ExpressionQualifier): pattern expression qualifier
+    """
     def __init__(self, observation_expression, qualifier):
         self.observation_expression = observation_expression
         self.qualifier = qualifier

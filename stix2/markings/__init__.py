@@ -1,9 +1,13 @@
 """
-Functions and classes for working with STIX 2 Data Markings.
+Functions for working with STIX 2 Data Markings.
 
-These high level functions will operate on both object level markings and
+These high level functions will operate on both object-level markings and
 granular markings unless otherwise noted in each of the functions.
 
+Note:
+    These functions are also available as methods on SDOs, SROs, and Marking
+    Definitions. The corresponding methods on those classes are identical to
+    these functions except that the `obj` parameter is omitted.
 
 .. autosummary::
    :toctree: markings
@@ -18,18 +22,21 @@ granular markings unless otherwise noted in each of the functions.
 from stix2.markings import granular_markings, object_markings
 
 
-def get_markings(obj, selectors=None, inherited=False, descendants=False):
+def get_markings(obj, selectors=None, inherited=False, descendants=False, marking_ref=True, lang=True):
     """
-    Get all markings associated to the field(s).
+    Get all markings associated to the field(s) specified by selectors.
 
     Args:
         obj: An SDO or SRO object.
         selectors: string or list of selectors strings relative to the SDO or
             SRO in which the properties appear.
-        inherited: If True, include object level markings and granular markings
-            inherited relative to the properties.
-        descendants: If True, include granular markings applied to any children
-            relative to the properties.
+        inherited (bool): If True, include object level markings and granular
+            markings inherited relative to the properties.
+        descendants (bool): If True, include granular markings applied to any
+            children relative to the properties.
+        marking_ref (bool): If False, excludes markings that use
+            ``marking_ref`` property.
+        lang (bool): If False, excludes markings that use ``lang`` property.
 
     Returns:
         list: Marking identifiers that matched the selectors expression.
@@ -46,7 +53,9 @@ def get_markings(obj, selectors=None, inherited=False, descendants=False):
         obj,
         selectors,
         inherited,
-        descendants
+        descendants,
+        marking_ref,
+        lang,
     )
 
     if inherited:
@@ -55,17 +64,21 @@ def get_markings(obj, selectors=None, inherited=False, descendants=False):
     return list(set(results))
 
 
-def set_markings(obj, marking, selectors=None):
+def set_markings(obj, marking, selectors=None, marking_ref=True, lang=True):
     """
-    Removes all markings associated with selectors and appends a new granular
+    Remove all markings associated with selectors and appends a new granular
     marking. Refer to `clear_markings` and `add_markings` for details.
 
     Args:
         obj: An SDO or SRO object.
-        selectors: string or list of selectors strings relative to the SDO or
-            SRO in which the properties appear.
         marking: identifier or list of marking identifiers that apply to the
             properties selected by `selectors`.
+        selectors: string or list of selectors strings relative to the SDO or
+            SRO in which the properties appear.
+        marking_ref (bool): If False, markings that use the ``marking_ref``
+            property will not be removed.
+        lang (bool): If False, markings that use the ``lang`` property
+            will not be removed.
 
     Returns:
         A new version of the given SDO or SRO with specified markings removed
@@ -79,19 +92,19 @@ def set_markings(obj, marking, selectors=None):
     if selectors is None:
         return object_markings.set_markings(obj, marking)
     else:
-        return granular_markings.set_markings(obj, marking, selectors)
+        return granular_markings.set_markings(obj, marking, selectors, marking_ref, lang)
 
 
 def remove_markings(obj, marking, selectors=None):
     """
-    Removes granular_marking from the granular_markings collection.
+    Remove a marking from this object.
 
     Args:
         obj: An SDO or SRO object.
-        selectors: string or list of selectors strings relative to the SDO or
-            SRO in which the properties appear.
         marking: identifier or list of marking identifiers that apply to the
             properties selected by `selectors`.
+        selectors: string or list of selectors strings relative to the SDO or
+            SRO in which the properties appear.
 
     Raises:
         InvalidSelectorError: If `selectors` fail validation.
@@ -114,14 +127,14 @@ def remove_markings(obj, marking, selectors=None):
 
 def add_markings(obj, marking, selectors=None):
     """
-    Appends a granular_marking to the granular_markings collection.
+    Append a marking to this object.
 
     Args:
         obj: An SDO or SRO object.
-        selectors: string or list of selectors strings relative to the SDO or
-            SRO in which the properties appear.
         marking: identifier or list of marking identifiers that apply to the
             properties selected by `selectors`.
+        selectors: string or list of selectors strings relative to the SDO or
+            SRO in which the properties appear.
 
     Raises:
         InvalidSelectorError: If `selectors` fail validation.
@@ -140,14 +153,18 @@ def add_markings(obj, marking, selectors=None):
         return granular_markings.add_markings(obj, marking, selectors)
 
 
-def clear_markings(obj, selectors=None):
+def clear_markings(obj, selectors=None, marking_ref=True, lang=True):
     """
-    Removes all granular_marking associated with the selectors.
+    Remove all markings associated with the selectors.
 
     Args:
         obj: An SDO or SRO object.
         selectors: string or list of selectors strings relative to the SDO or
             SRO in which the field(s) appear(s).
+        marking_ref (bool): If False, markings that use the ``marking_ref``
+            property will not be removed.
+        lang (bool): If False, markings that use the ``lang`` property
+            will not be removed.
 
     Raises:
         InvalidSelectorError: If `selectors` fail validation.
@@ -165,23 +182,24 @@ def clear_markings(obj, selectors=None):
     if selectors is None:
         return object_markings.clear_markings(obj)
     else:
-        return granular_markings.clear_markings(obj, selectors)
+        return granular_markings.clear_markings(obj, selectors, marking_ref, lang)
 
 
 def is_marked(obj, marking=None, selectors=None, inherited=False, descendants=False):
     """
-    Checks if field(s) is marked by any marking or by specific marking(s).
+    Check if field(s) is marked by any marking or by specific marking(s).
 
     Args:
         obj: An SDO or SRO object.
-        selectors: string or list of selectors strings relative to the SDO or
-            SRO in which the field(s) appear(s).
         marking: identifier or list of marking identifiers that apply to the
             properties selected by `selectors`.
-        inherited: If True, include object level markings and granular markings
-            inherited to determine if the properties is/are marked.
-        descendants: If True, include granular markings applied to any children
-            of the given selector to determine if the properties is/are marked.
+        selectors: string or list of selectors strings relative to the SDO or
+            SRO in which the field(s) appear(s).
+        inherited (bool): If True, include object level markings and granular
+            markings inherited to determine if the properties is/are marked.
+        descendants (bool): If True, include granular markings applied to any
+            children of the given selector to determine if the properties
+            is/are marked.
 
     Returns:
         bool: True if ``selectors`` is found on internal SDO or SRO collection.
@@ -203,7 +221,7 @@ def is_marked(obj, marking=None, selectors=None, inherited=False, descendants=Fa
         marking,
         selectors,
         inherited,
-        descendants
+        descendants,
     )
 
     if inherited:
@@ -216,7 +234,7 @@ def is_marked(obj, marking=None, selectors=None, inherited=False, descendants=Fa
                 granular_marks,
                 selectors,
                 inherited,
-                descendants
+                descendants,
             )
 
         result = result or object_markings.is_marked(obj, object_marks)
@@ -224,7 +242,7 @@ def is_marked(obj, marking=None, selectors=None, inherited=False, descendants=Fa
     return result
 
 
-class _MarkingsMixin():
+class _MarkingsMixin(object):
     pass
 
 

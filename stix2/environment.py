@@ -1,7 +1,9 @@
+"""Python STIX2 Environment API."""
+
 import copy
 
 from .core import parse as _parse
-from .sources import CompositeDataSource, DataStore
+from .datastore import CompositeDataSource, DataStoreMixin
 
 
 class ObjectFactory(object):
@@ -24,24 +26,50 @@ class ObjectFactory(object):
             default. Defaults to True.
     """
 
-    def __init__(self, created_by_ref=None, created=None,
-                 external_references=None, object_marking_refs=None,
-                 list_append=True):
+    def __init__(
+        self, created_by_ref=None, created=None,
+        external_references=None, object_marking_refs=None,
+        list_append=True,
+    ):
 
         self._defaults = {}
         if created_by_ref:
-            self._defaults['created_by_ref'] = created_by_ref
+            self.set_default_creator(created_by_ref)
         if created:
-            self._defaults['created'] = created
-            # If the user provides a default "created" time, we also want to use
-            # that as the modified time.
-            self._defaults['modified'] = created
+            self.set_default_created(created)
         if external_references:
-            self._defaults['external_references'] = external_references
+            self.set_default_external_refs(external_references)
         if object_marking_refs:
-            self._defaults['object_marking_refs'] = object_marking_refs
+            self.set_default_object_marking_refs(object_marking_refs)
         self._list_append = list_append
         self._list_properties = ['external_references', 'object_marking_refs']
+
+    def set_default_creator(self, creator=None):
+        """Set default value for the `created_by_ref` property.
+
+        """
+        self._defaults['created_by_ref'] = creator
+
+    def set_default_created(self, created=None):
+        """Set default value for the `created` property.
+
+        """
+        self._defaults['created'] = created
+        # If the user provides a default "created" time, we also want to use
+        # that as the modified time.
+        self._defaults['modified'] = created
+
+    def set_default_external_refs(self, external_references=None):
+        """Set default external references.
+
+        """
+        self._defaults['external_references'] = external_references
+
+    def set_default_object_marking_refs(self, object_marking_refs=None):
+        """Set default object markings.
+
+        """
+        self._defaults['object_marking_refs'] = object_marking_refs
 
     def create(self, cls, **kwargs):
         """Create a STIX object using object factory defaults.
@@ -75,8 +103,8 @@ class ObjectFactory(object):
         return cls(**properties)
 
 
-class Environment(object):
-    """
+class Environment(DataStoreMixin):
+    """Abstract away some of the nasty details of working with STIX content.
 
     Args:
         factory (ObjectFactory, optional): Factory for creating objects with common
@@ -86,6 +114,15 @@ class Environment(object):
         source (DataSource, optional): Source for retrieving STIX objects.
         sink (DataSink, optional): Destination for saving STIX objects.
             Invalid if `store` is also provided.
+
+    .. automethod:: get
+    .. automethod:: all_versions
+    .. automethod:: query
+    .. automethod:: creator_of
+    .. automethod:: relationships
+    .. automethod:: related_to
+    .. automethod:: add
+
     """
 
     def __init__(self, factory=ObjectFactory(), store=None, source=None, sink=None):
@@ -105,50 +142,47 @@ class Environment(object):
         return self.factory.create(*args, **kwargs)
     create.__doc__ = ObjectFactory.create.__doc__
 
-    def get(self, *args, **kwargs):
-        try:
-            return self.source.get(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data source to query')
-    get.__doc__ = DataStore.get.__doc__
+    def set_default_creator(self, *args, **kwargs):
+        return self.factory.set_default_creator(*args, **kwargs)
+    set_default_creator.__doc__ = ObjectFactory.set_default_creator.__doc__
 
-    def all_versions(self, *args, **kwargs):
-        """Retrieve all versions of a single STIX object by ID.
-        """
-        try:
-            return self.source.all_versions(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data source to query')
-    all_versions.__doc__ = DataStore.all_versions.__doc__
+    def set_default_created(self, *args, **kwargs):
+        return self.factory.set_default_created(*args, **kwargs)
+    set_default_created.__doc__ = ObjectFactory.set_default_created.__doc__
 
-    def query(self, *args, **kwargs):
-        """Retrieve STIX objects matching a set of filters.
-        """
-        try:
-            return self.source.query(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data source to query')
-    query.__doc__ = DataStore.query.__doc__
+    def set_default_external_refs(self, *args, **kwargs):
+        return self.factory.set_default_external_refs(*args, **kwargs)
+    set_default_external_refs.__doc__ = ObjectFactory.set_default_external_refs.__doc__
+
+    def set_default_object_marking_refs(self, *args, **kwargs):
+        return self.factory.set_default_object_marking_refs(*args, **kwargs)
+    set_default_object_marking_refs.__doc__ = ObjectFactory.set_default_object_marking_refs.__doc__
 
     def add_filters(self, *args, **kwargs):
-        try:
-            return self.source.filters.update(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data source')
+        return self.source.filters.add(*args, **kwargs)
 
     def add_filter(self, *args, **kwargs):
-        try:
-            return self.source.filters.add(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data source')
-
-    def add(self, *args, **kwargs):
-        try:
-            return self.sink.add(*args, **kwargs)
-        except AttributeError:
-            raise AttributeError('Environment has no data sink to put objects in')
-    add.__doc__ = DataStore.add.__doc__
+        return self.source.filters.add(*args, **kwargs)
 
     def parse(self, *args, **kwargs):
         return _parse(*args, **kwargs)
     parse.__doc__ = _parse.__doc__
+
+    def creator_of(self, obj):
+        """Retrieve the Identity refered to by the object's `created_by_ref`.
+
+        Args:
+            obj: The STIX object whose `created_by_ref` property will be looked
+                up.
+
+        Returns:
+            str: The STIX object's creator, or None, if the object contains no
+                `created_by_ref` property or the object's creator cannot be
+                found.
+
+        """
+        creator_id = obj.get('created_by_ref', '')
+        if creator_id:
+            return self.get(creator_id)
+        else:
+            return None

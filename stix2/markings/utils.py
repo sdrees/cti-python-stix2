@@ -1,15 +1,14 @@
-"""Utility functions for STIX 2.0 data markings.
-"""
+"""Utility functions for STIX2 data markings."""
 
 import collections
 
 import six
 
-from stix2 import exceptions
+from stix2 import exceptions, utils
 
 
 def _evaluate_expression(obj, selector):
-    """Walks an SDO or SRO generating selectors to match against ``selector``.
+    """Walk an SDO or SRO generating selectors to match against ``selector``.
 
     If a match is found and the the value of this property is present in the
     objects. Matching value of the property will be returned.
@@ -23,7 +22,7 @@ def _evaluate_expression(obj, selector):
 
     """
     for items, value in iterpath(obj):
-        path = ".".join(items)
+        path = '.'.join(items)
 
         if path == selector and value:
             return [value]
@@ -32,7 +31,7 @@ def _evaluate_expression(obj, selector):
 
 
 def _validate_selector(obj, selector):
-    """Internal method to evaluate each selector."""
+    """Evaluate each selector against an object."""
     results = list(_evaluate_expression(obj, selector))
 
     if len(results) >= 1:
@@ -40,7 +39,7 @@ def _validate_selector(obj, selector):
 
 
 def _get_marking_id(marking):
-    if type(marking).__name__ is 'MarkingDefinition':  # avoid circular import
+    if type(marking).__name__ == 'MarkingDefinition':  # avoid circular import
         return marking.id
     return marking
 
@@ -119,20 +118,25 @@ def compress_markings(granular_markings):
     map_ = collections.defaultdict(set)
 
     for granular_marking in granular_markings:
-        if granular_marking.get("marking_ref"):
-            map_[granular_marking.get("marking_ref")].update(granular_marking.get("selectors"))
+        if granular_marking.get('marking_ref'):
+            map_[granular_marking.get('marking_ref')].update(granular_marking.get('selectors'))
+
+        if granular_marking.get('lang'):
+            map_[granular_marking.get('lang')].update(granular_marking.get('selectors'))
 
     compressed = \
         [
-            {"marking_ref": marking_ref, "selectors": sorted(selectors)}
-            for marking_ref, selectors in six.iteritems(map_)
+            {'marking_ref': item, 'selectors': sorted(selectors)}
+            if utils.is_marking(item) else
+            {'lang': item, 'selectors': sorted(selectors)}
+            for item, selectors in six.iteritems(map_)
         ]
 
     return compressed
 
 
 def expand_markings(granular_markings):
-    """Expands granular markings list.
+    """Expand granular markings list.
 
     If there is more than one selector per granular marking. It will be
     expanded using the same marking_ref.
@@ -173,23 +177,32 @@ def expand_markings(granular_markings):
     expanded = []
 
     for marking in granular_markings:
-        selectors = marking.get("selectors")
-        marking_ref = marking.get("marking_ref")
+        selectors = marking.get('selectors')
+        marking_ref = marking.get('marking_ref')
+        lang = marking.get('lang')
 
-        expanded.extend(
-            [
-                {"marking_ref": marking_ref, "selectors": [selector]}
-                for selector in selectors
-            ]
-        )
+        if marking_ref:
+            expanded.extend(
+                [
+                    {'marking_ref': marking_ref, 'selectors': [selector]}
+                    for selector in selectors
+                ],
+            )
+        if lang:
+            expanded.extend(
+                [
+                    {'lang': lang, 'selectors': [selector]}
+                    for selector in selectors
+                ],
+            )
 
     return expanded
 
 
 def build_granular_marking(granular_marking):
-    """Returns a dictionary with the required structure for a granular marking.
+    """Return a dictionary with the required structure for a granular marking.
     """
-    return {"granular_markings": expand_markings(granular_marking)}
+    return {'granular_markings': expand_markings(granular_marking)}
 
 
 def iterpath(obj, path=None):
@@ -229,7 +242,7 @@ def iterpath(obj, path=None):
         elif isinstance(varobj, list):
 
             for item in varobj:
-                index = "[{0}]".format(varobj.index(item))
+                index = '[{0}]'.format(varobj.index(item))
                 path.append(index)
 
                 yield (path, item)
@@ -241,3 +254,81 @@ def iterpath(obj, path=None):
                 path.pop()
 
         path.pop()
+
+
+def check_tlp_marking(marking_obj, spec_version):
+    # Specific TLP Marking validation case.
+
+    if marking_obj["definition_type"] == "tlp":
+        color = marking_obj["definition"]["tlp"]
+
+        if color == "white":
+            if spec_version == '2.0':
+                w = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "white"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9", "type": "marking-definition"}'
+                )
+            else:
+                w = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "white"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9", "type": "marking-definition",'
+                    ' "spec_version": "2.1"}'
+                )
+            if marking_obj["id"] != "marking-definition--613f2e26-407d-48c7-9eca-b8e91df99dc9":
+                raise exceptions.TLPMarkingDefinitionError(marking_obj["id"], w)
+            elif utils.format_datetime(marking_obj["created"]) != "2017-01-20T00:00:00.000Z":
+                raise exceptions.TLPMarkingDefinitionError(utils.format_datetime(marking_obj["created"]), w)
+
+        elif color == "green":
+            if spec_version == '2.0':
+                g = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "green"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da", "type": "marking-definition"}'
+                )
+            else:
+                g = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "green"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da", "type": "marking-definition",'
+                    ' "spec_version": "2.1"}'
+                )
+            if marking_obj["id"] != "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da":
+                raise exceptions.TLPMarkingDefinitionError(marking_obj["id"], g)
+            elif utils.format_datetime(marking_obj["created"]) != "2017-01-20T00:00:00.000Z":
+                raise exceptions.TLPMarkingDefinitionError(utils.format_datetime(marking_obj["created"]), g)
+
+        elif color == "amber":
+            if spec_version == '2.0':
+                a = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "amber"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--f88d31f6-486f-44da-b317-01333bde0b82", "type": "marking-definition"}'
+                )
+            else:
+                a = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "amber"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--f88d31f6-486f-44da-b317-01333bde0b82", "type": "marking-definition",'
+                    ' "spec_version": "2.1"}'
+                )
+            if marking_obj["id"] != "marking-definition--f88d31f6-486f-44da-b317-01333bde0b82":
+                raise exceptions.TLPMarkingDefinitionError(marking_obj["id"], a)
+            elif utils.format_datetime(marking_obj["created"]) != "2017-01-20T00:00:00.000Z":
+                raise exceptions.TLPMarkingDefinitionError(utils.format_datetime(marking_obj["created"]), a)
+
+        elif color == "red":
+            if spec_version == '2.0':
+                r = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "red"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed", "type": "marking-definition"}'
+                )
+            else:
+                r = (
+                    '{"created": "2017-01-20T00:00:00.000Z", "definition": {"tlp": "red"}, "definition_type": "tlp",'
+                    ' "id": "marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed", "type": "marking-definition",'
+                    ' "spec_version": "2.1"}'
+                )
+            if marking_obj["id"] != "marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed":
+                raise exceptions.TLPMarkingDefinitionError(marking_obj["id"], r)
+            elif utils.format_datetime(marking_obj["created"]) != "2017-01-20T00:00:00.000Z":
+                raise exceptions.TLPMarkingDefinitionError(utils.format_datetime(marking_obj["created"]), r)
+
+        else:
+            raise exceptions.TLPMarkingDefinitionError(marking_obj["id"], "Does not match any TLP Marking definition")
