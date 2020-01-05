@@ -5,10 +5,13 @@ import itertools
 import warnings
 
 from six.moves.urllib.parse import quote_plus
+from stix2patterns.validator import run_validator
 
 from ..core import STIXDomainObject
 from ..custom import _custom_object_builder
-from ..exceptions import PropertyPresenceError, STIXDeprecationWarning
+from ..exceptions import (
+    InvalidValueError, PropertyPresenceError, STIXDeprecationWarning,
+)
 from ..properties import (
     BinaryProperty, BooleanProperty, EmbeddedObjectProperty, EnumProperty,
     FloatProperty, IDProperty, IntegerProperty, ListProperty,
@@ -149,7 +152,7 @@ class Grouping(STIXDomainObject):
         ('name', StringProperty()),
         ('description', StringProperty()),
         ('context', StringProperty(required=True)),
-        ('object_refs', ListProperty(ReferenceProperty(invalid_types=[""], spec_version='2.1'), required=True)),
+        ('object_refs', ListProperty(ReferenceProperty(valid_types=["SCO", "SDO", "SRO"], spec_version='2.1'), required=True)),
     ])
 
 
@@ -215,6 +218,13 @@ class Indicator(STIXDomainObject):
         ('granular_markings', ListProperty(GranularMarking)),
     ])
 
+    def __init__(self, *args, **kwargs):
+
+        if kwargs.get('pattern') and kwargs.get('pattern_type') == 'stix' and not kwargs.get('pattern_version'):
+            kwargs['pattern_version'] = '2.1'
+
+        super(STIXDomainObject, self).__init__(*args, **kwargs)
+
     def _check_object_constraints(self):
         super(Indicator, self)._check_object_constraints()
 
@@ -224,6 +234,16 @@ class Indicator(STIXDomainObject):
         if valid_from and valid_until and valid_until <= valid_from:
             msg = "{0.id} 'valid_until' must be greater than 'valid_from'"
             raise ValueError(msg.format(self))
+
+        if self.get('pattern_type') == "stix":
+            try:
+                pat_ver = self.get('pattern_version')
+            except AttributeError:
+                pat_ver = '2.1'
+
+            errors = run_validator(self.get('pattern'), pat_ver)
+            if errors:
+                raise InvalidValueError(self.__class__, 'pattern', str(errors[0]))
 
 
 class Infrastructure(STIXDomainObject):
@@ -505,7 +525,7 @@ class MalwareAnalysis(STIXDomainObject):
         ('analysis_started', TimestampProperty()),
         ('analysis_ended', TimestampProperty()),
         ('av_result', StringProperty()),
-        ('analysis_sco_refs', ListProperty(ReferenceProperty(valid_types="only_SCO", spec_version='2.1'))),
+        ('analysis_sco_refs', ListProperty(ReferenceProperty(valid_types="SCO", spec_version='2.1'))),
     ])
 
     def _check_object_constraints(self):
@@ -531,7 +551,7 @@ class Note(STIXDomainObject):
         ('abstract', StringProperty()),
         ('content', StringProperty(required=True)),
         ('authors', ListProperty(StringProperty)),
-        ('object_refs', ListProperty(ReferenceProperty(invalid_types=[""], spec_version='2.1'), required=True)),
+        ('object_refs', ListProperty(ReferenceProperty(valid_types=["SCO", "SDO", "SRO"], spec_version='2.1'), required=True)),
         ('revoked', BooleanProperty(default=lambda: False)),
         ('labels', ListProperty(StringProperty)),
         ('confidence', IntegerProperty()),
@@ -560,7 +580,7 @@ class ObservedData(STIXDomainObject):
         ('last_observed', TimestampProperty(required=True)),
         ('number_observed', IntegerProperty(min=1, max=999999999, required=True)),
         ('objects', ObservableProperty(spec_version='2.1')),
-        ('object_refs', ListProperty(ReferenceProperty(valid_types="only_SCO_&_SRO", spec_version="2.1"))),
+        ('object_refs', ListProperty(ReferenceProperty(valid_types=["SCO", "SRO"], spec_version="2.1"))),
         ('revoked', BooleanProperty(default=lambda: False)),
         ('labels', ListProperty(StringProperty)),
         ('confidence', IntegerProperty()),
@@ -571,7 +591,7 @@ class ObservedData(STIXDomainObject):
     ])
 
     def __init__(self, *args, **kwargs):
-        self.__allow_custom = kwargs.get('allow_custom', False)
+        self._allow_custom = kwargs.get('allow_custom', False)
         self._properties['objects'].allow_custom = kwargs.get('allow_custom', False)
 
         if "objects" in kwargs:
@@ -625,7 +645,7 @@ class Opinion(STIXDomainObject):
                 ], required=True,
             ),
         ),
-        ('object_refs', ListProperty(ReferenceProperty(invalid_types=[""], spec_version='2.1'), required=True)),
+        ('object_refs', ListProperty(ReferenceProperty(valid_types=["SCO", "SDO", "SRO"], spec_version='2.1'), required=True)),
         ('revoked', BooleanProperty(default=lambda: False)),
         ('labels', ListProperty(StringProperty)),
         ('confidence', IntegerProperty()),
@@ -654,7 +674,7 @@ class Report(STIXDomainObject):
         ('description', StringProperty()),
         ('report_types', ListProperty(StringProperty, required=True)),
         ('published', TimestampProperty(required=True)),
-        ('object_refs', ListProperty(ReferenceProperty(invalid_types=[""], spec_version='2.1'), required=True)),
+        ('object_refs', ListProperty(ReferenceProperty(valid_types=["SCO", "SDO", "SRO"], spec_version='2.1'), required=True)),
         ('revoked', BooleanProperty(default=lambda: False)),
         ('labels', ListProperty(StringProperty)),
         ('confidence', IntegerProperty()),

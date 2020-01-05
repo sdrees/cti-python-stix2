@@ -2,14 +2,12 @@
 
 import base64
 import binascii
-import collections
 import copy
 import inspect
 import re
 import uuid
 
 from six import string_types, text_type
-from stix2patterns.validator import run_validator
 
 import stix2
 
@@ -20,6 +18,11 @@ from .exceptions import (
     MutuallyExclusivePropertiesError,
 )
 from .utils import _get_dict, get_class_hierarchy_names, parse_into_datetime
+
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 ERROR_INVALID_ID = (
     "not a valid STIX identifier, must match <object-type>--<UUID>: {}"
@@ -199,8 +202,13 @@ class ListProperty(Property):
             else:
                 obj_type = self.contained
 
-            if isinstance(valid, collections.Mapping):
-                result.append(obj_type(**valid))
+            if isinstance(valid, Mapping):
+                try:
+                    valid._allow_custom
+                except AttributeError:
+                    result.append(obj_type(**valid))
+                else:
+                    result.append(obj_type(allow_custom=True, **valid))
             else:
                 result.append(obj_type(valid))
 
@@ -363,6 +371,10 @@ class DictionaryProperty(Property):
                     "underscore (_)"
                 )
                 raise DictionaryKeyError(k, msg)
+
+        if len(dictified) < 1:
+            raise ValueError("must not be empty.")
+
         return dictified
 
 
@@ -381,6 +393,7 @@ HASHES_REGEX = {
     "SHA3512": (r"^[a-fA-F0-9]{128}$", "SHA3-512"),
     "SSDEEP": (r"^[a-zA-Z0-9/+:.]{1,128}$", "ssdeep"),
     "WHIRLPOOL": (r"^[a-fA-F0-9]{128}$", "WHIRLPOOL"),
+    "TLSH": (r"^[a-fA-F0-9]{70}$", "TLSH"),
 }
 
 
@@ -388,7 +401,7 @@ class HashesProperty(DictionaryProperty):
 
     def clean(self, value):
         clean_dict = super(HashesProperty, self).clean(value)
-        for k, v in clean_dict.items():
+        for k, v in copy.deepcopy(clean_dict).items():
             key = k.upper().replace('-', '')
             if key in HASHES_REGEX:
                 vocab_key = HASHES_REGEX[key][1]
@@ -449,22 +462,19 @@ class ReferenceProperty(Property):
             value = value.id
         value = str(value)
 
-        possible_prefix = value[:value.index('--') + 2]
+        possible_prefix = value[:value.index('--')]
 
         if self.valid_types:
-            if self.valid_types == ["only_SDO"]:
-                self.valid_types = STIX2_OBJ_MAPS['v21']['objects'].keys()
-            elif self.valid_types == ["only_SCO"]:
-                self.valid_types = STIX2_OBJ_MAPS['v21']['observables'].keys()
-            elif self.valid_types == ["only_SCO_&_SRO"]:
-                self.valid_types = list(STIX2_OBJ_MAPS['v21']['observables'].keys()) + ['relationship', 'sighting']
+            ref_valid_types = enumerate_types(self.valid_types, 'v' + self.spec_version.replace(".", ""))
 
-            if possible_prefix[:-2] in self.valid_types:
+            if possible_prefix in ref_valid_types:
                 required_prefix = possible_prefix
             else:
                 raise ValueError("The type-specifying prefix '%s' for this property is not valid" % (possible_prefix))
         elif self.invalid_types:
-            if possible_prefix[:-2] not in self.invalid_types:
+            ref_invalid_types = enumerate_types(self.invalid_types, 'v' + self.spec_version.replace(".", ""))
+
+            if possible_prefix not in ref_invalid_types:
                 required_prefix = possible_prefix
             else:
                 raise ValueError("An invalid type-specifying prefix '%s' was specified for this property" % (possible_prefix, value))
@@ -472,6 +482,31 @@ class ReferenceProperty(Property):
         _validate_id(value, self.spec_version, required_prefix)
 
         return value
+
+
+def enumerate_types(types, spec_version):
+    """
+    `types` is meant to be a list; it may contain specific object types and/or
+        the any of the words "SCO", "SDO", or "SRO"
+
+    Since "SCO", "SDO", and "SRO" are general types that encompass various specific object types,
+        once each of those words is being processed, that word will be removed from `return_types`,
+        so as not to mistakenly allow objects to be created of types "SCO", "SDO", or "SRO"
+    """
+    return_types = []
+    return_types += types
+
+    if "SDO" in types:
+        return_types.remove("SDO")
+        return_types += STIX2_OBJ_MAPS[spec_version]['objects'].keys()
+    if "SCO" in types:
+        return_types.remove("SCO")
+        return_types += STIX2_OBJ_MAPS[spec_version]['observables'].keys()
+    if "SRO" in types:
+        return_types.remove("SRO")
+        return_types += ['relationship', 'sighting']
+
+    return return_types
 
 
 SELECTOR_REGEX = re.compile(r"^[a-z0-9_-]{3,250}(\.(\[\d+\]|[a-z0-9_-]{1,250}))*$")
@@ -525,14 +560,7 @@ class EnumProperty(StringProperty):
 
 
 class PatternProperty(StringProperty):
-
-    def clean(self, value):
-        cleaned_value = super(PatternProperty, self).clean(value)
-        errors = run_validator(cleaned_value)
-        if errors:
-            raise ValueError(str(errors[0]))
-
-        return cleaned_value
+    pass
 
 
 class ObservableProperty(Property):
