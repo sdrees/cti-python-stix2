@@ -1,14 +1,13 @@
 """STIX 2.1 Cyber Observable Objects.
 
 Embedded observable object types, such as Email MIME Component, which is
-embedded in Email Message objects, inherit from ``_STIXBase`` instead of
-Observable and do not have a ``_type`` attribute.
+embedded in Email Message objects, inherit from ``_STIXBase21`` instead of
+_Observable and do not have a ``_type`` attribute.
 """
 
 from collections import OrderedDict
 import itertools
 
-from ..base import _Extension, _Observable, _STIXBase
 from ..custom import _custom_extension_builder, _custom_observable_builder
 from ..exceptions import AtLeastOnePropertyError, DependentPropertiesError
 from ..properties import (
@@ -18,18 +17,18 @@ from ..properties import (
     ObjectReferenceProperty, ReferenceProperty, StringProperty,
     TimestampProperty, TypeProperty,
 )
+from .base import _Extension, _Observable, _STIXBase21
 from .common import GranularMarking
 
 
 class Artifact(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_rqwyxo6gp7cv>`__.
     """
 
     _type = 'artifact'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('mime_type', StringProperty()),
         ('payload_bin', BinaryProperty()),
@@ -52,14 +51,13 @@ class Artifact(_Observable):
 
 
 class AutonomousSystem(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_bxebwa6l91fb>`__.
     """
 
     _type = 'autonomous-system'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('number', IntegerProperty(required=True)),
         ('name', StringProperty()),
@@ -74,14 +72,13 @@ class AutonomousSystem(_Observable):
 
 
 class Directory(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_vhpkn06q7fvl>`__.
     """
 
     _type = 'directory'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('path', StringProperty(required=True)),
         ('path_enc', StringProperty()),
@@ -100,14 +97,13 @@ class Directory(_Observable):
 
 
 class DomainName(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_i2zf5h7vnrd9>`__.
     """
 
     _type = 'domain-name'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('resolves_to_refs', ListProperty(ReferenceProperty(valid_types=['ipv4-addr', 'ipv6-addr', 'domain-name'], spec_version='2.1'))),
@@ -121,14 +117,13 @@ class DomainName(_Observable):
 
 
 class EmailAddress(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_am7srelb9c14>`__.
     """
 
     _type = 'email-addr'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('display_name', StringProperty()),
@@ -142,10 +137,9 @@ class EmailAddress(_Observable):
     _id_contributing_properties = ["value"]
 
 
-class EmailMIMEComponent(_STIXBase):
-    # TODO: Add link
+class EmailMIMEComponent(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_kzv52qqc0xw1>`__.
     """
 
     _properties = OrderedDict([
@@ -161,14 +155,13 @@ class EmailMIMEComponent(_STIXBase):
 
 
 class EmailMessage(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_loz634bn09om>`__.
     """
 
     _type = 'email-message'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('is_multipart', BooleanProperty(required=True)),
         ('date', TimestampProperty()),
@@ -202,9 +195,8 @@ class EmailMessage(_Observable):
 
 
 class ArchiveExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_mm25z9wuw4tr>`__.
     """
 
     _type = 'archive-ext'
@@ -214,10 +206,9 @@ class ArchiveExt(_Extension):
     ])
 
 
-class AlternateDataStream(_STIXBase):
-    # TODO: Add link
+class AlternateDataStream(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_nbqgazg6fsma>`__.
     """
 
     _properties = OrderedDict([
@@ -228,9 +219,8 @@ class AlternateDataStream(_STIXBase):
 
 
 class NTFSExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_tb77nk1g3y6f>`__.
     """
 
     _type = 'ntfs-ext'
@@ -241,9 +231,8 @@ class NTFSExt(_Extension):
 
 
 class PDFExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_30hzxqrmkg8w>`__.
     """
 
     _type = 'pdf-ext'
@@ -257,9 +246,8 @@ class PDFExt(_Extension):
 
 
 class RasterImageExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_20mnz0u5ppxr>`__.
     """
 
     _type = 'raster-image-ext'
@@ -271,10 +259,9 @@ class RasterImageExt(_Extension):
     ])
 
 
-class WindowsPEOptionalHeaderType(_STIXBase):
-    # TODO: Add link
+class WindowsPEOptionalHeaderType(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_wyp5qdc2wugy>`__.
     """
 
     _properties = OrderedDict([
@@ -316,10 +303,9 @@ class WindowsPEOptionalHeaderType(_STIXBase):
         self._check_at_least_one_property()
 
 
-class WindowsPESection(_STIXBase):
-    # TODO: Add link
+class WindowsPESection(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_wiqw87xsov3t>`__.
     """
 
     _properties = OrderedDict([
@@ -331,9 +317,8 @@ class WindowsPESection(_STIXBase):
 
 
 class WindowsPEBinaryExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_5f9bgdmj91h5>`__.
     """
 
     _type = 'windows-pebinary-ext'
@@ -354,14 +339,13 @@ class WindowsPEBinaryExt(_Extension):
 
 
 class File(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_vq03pryd7u32>`__.
     """
 
     _type = 'file'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('hashes', HashesProperty(spec_version='2.1')),
         ('size', IntegerProperty(min=0)),
@@ -390,14 +374,13 @@ class File(_Observable):
 
 
 class IPv4Address(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_ta83c412bfsc>`__.
     """
 
     _type = 'ipv4-addr'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('resolves_to_refs', ListProperty(ReferenceProperty(valid_types='mac-addr', spec_version='2.1'))),
@@ -412,14 +395,13 @@ class IPv4Address(_Observable):
 
 
 class IPv6Address(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_f76hsv2pvwwq>`__.
     """
 
     _type = 'ipv6-addr'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('resolves_to_refs', ListProperty(ReferenceProperty(valid_types='mac-addr', spec_version='2.1'))),
@@ -434,14 +416,13 @@ class IPv6Address(_Observable):
 
 
 class MACAddress(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_6lhrrdef8852>`__.
     """
 
     _type = 'mac-addr'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('extensions', ExtensionsProperty(spec_version='2.1', enclosing_type=_type)),
@@ -454,14 +435,13 @@ class MACAddress(_Observable):
 
 
 class Mutex(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_u65ia5eoc7cv>`__.
     """
 
     _type = 'mutex'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('name', StringProperty(required=True)),
         ('extensions', ExtensionsProperty(spec_version='2.1', enclosing_type=_type)),
@@ -474,9 +454,8 @@ class Mutex(_Observable):
 
 
 class HTTPRequestExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_60k6dn28qicj>`__.
     """
 
     _type = 'http-request-ext'
@@ -493,7 +472,7 @@ class HTTPRequestExt(_Extension):
 class ICMPExt(_Extension):
     # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_3g6wds21zwzl>`__.
     """
 
     _type = 'icmp-ext'
@@ -504,9 +483,8 @@ class ICMPExt(_Extension):
 
 
 class SocketExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_f54f1hripxsg>`__.
     """
 
     _type = 'socket-ext'
@@ -566,9 +544,8 @@ class SocketExt(_Extension):
 
 
 class TCPExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_2z78x4m8ewcw>`__.
     """
 
     _type = 'tcp-ext'
@@ -579,14 +556,13 @@ class TCPExt(_Extension):
 
 
 class NetworkTraffic(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_e5nyr5squmsd>`__.
     """
 
     _type = 'network-traffic'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('start', TimestampProperty()),
         ('end', TimestampProperty()),
@@ -635,9 +611,8 @@ class NetworkTraffic(_Observable):
 
 
 class WindowsProcessExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_4wfs4ve800kf>`__.
     """
 
     _type = 'windows-process-ext'
@@ -660,9 +635,8 @@ class WindowsProcessExt(_Extension):
 
 
 class WindowsServiceExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_s2rmoe7djlt>`__.
     """
 
     _type = 'windows-service-ext'
@@ -704,14 +678,13 @@ class WindowsServiceExt(_Extension):
 
 
 class Process(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_ur7snm473t1d>`__.
     """
 
     _type = 'process'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('is_hidden', BooleanProperty()),
         ('pid', IntegerProperty()),
@@ -749,14 +722,13 @@ class Process(_Observable):
 
 
 class Software(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_jru33yeokrmh>`__.
     """
 
     _type = 'software'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('name', StringProperty(required=True)),
         ('cpe', StringProperty()),
@@ -774,14 +746,13 @@ class Software(_Observable):
 
 
 class URL(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_6bsklda6vc0c>`__.
     """
 
     _type = 'url'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('value', StringProperty(required=True)),
         ('extensions', ExtensionsProperty(spec_version='2.1', enclosing_type=_type)),
@@ -794,9 +765,8 @@ class URL(_Observable):
 
 
 class UNIXAccountExt(_Extension):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_z25gmwyz67kl>`__.
     """
 
     _type = 'unix-account-ext'
@@ -809,14 +779,13 @@ class UNIXAccountExt(_Extension):
 
 
 class UserAccount(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_hah33g4ntxnx>`__.
     """
 
     _type = 'user-account'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('user_id', StringProperty()),
         ('credential', StringProperty()),
@@ -841,10 +810,9 @@ class UserAccount(_Observable):
     _id_contributing_properties = ["account_type", "user_id", "account_login"]
 
 
-class WindowsRegistryValueType(_STIXBase):
-    # TODO: Add link
+class WindowsRegistryValueType(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_6jiqabgqp2hp>`__.
     """
 
     _type = 'windows-registry-value-type'
@@ -872,14 +840,13 @@ class WindowsRegistryValueType(_STIXBase):
 
 
 class WindowsRegistryKey(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_bdim4of4dl37>`__.
     """
 
     _type = 'windows-registry-key'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('key', StringProperty()),
         ('values', ListProperty(EmbeddedObjectProperty(type=WindowsRegistryValueType))),
@@ -896,10 +863,9 @@ class WindowsRegistryKey(_Observable):
     _id_contributing_properties = ["key", "values"]
 
 
-class X509V3ExtenstionsType(_STIXBase):
-    # TODO: Add link
+class X509V3ExtenstionsType(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_c1kt4dheb6vz>`__.
     """
 
     _type = 'x509-v3-extensions-type'
@@ -924,14 +890,13 @@ class X509V3ExtenstionsType(_STIXBase):
 
 
 class X509Certificate(_Observable):
-    # TODO: Add link
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_g3kniyun8ykv>`__.
     """
 
     _type = 'x509-certificate'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('is_self_signed', BooleanProperty()),
         ('hashes', HashesProperty(spec_version='2.1')),
@@ -983,12 +948,12 @@ def CustomObservable(type='x-custom-observable', properties=None, id_contrib_pro
     """
     def wrapper(cls):
         _properties = list(itertools.chain.from_iterable([
-            [('type', TypeProperty(type))],
+            [('type', TypeProperty(type, spec_version='2.1'))],
             [('id', IDProperty(type, spec_version='2.1'))],
             properties,
             [('extensions', ExtensionsProperty(spec_version='2.1', enclosing_type=type))],
         ]))
-        return _custom_observable_builder(cls, type, _properties, '2.1', id_contrib_props)
+        return _custom_observable_builder(cls, type, _properties, '2.1', _Observable, id_contrib_props)
     return wrapper
 
 
@@ -996,5 +961,5 @@ def CustomExtension(observable=None, type='x-custom-observable-ext', properties=
     """Decorator for custom extensions to STIX Cyber Observables.
     """
     def wrapper(cls):
-        return _custom_extension_builder(cls, observable, type, properties, '2.1')
+        return _custom_extension_builder(cls, observable, type, properties, '2.1', _Extension)
     return wrapper

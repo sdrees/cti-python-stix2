@@ -2,7 +2,6 @@
 
 from collections import OrderedDict
 
-from ..base import _STIXBase
 from ..custom import _custom_marking_builder
 from ..exceptions import InvalidValueError
 from ..markings import _MarkingsMixin
@@ -13,12 +12,12 @@ from ..properties import (
     SelectorProperty, StringProperty, TimestampProperty, TypeProperty,
 )
 from ..utils import NOW, _get_dict
+from .base import _STIXBase21
 
 
-class ExternalReference(_STIXBase):
-    # TODO: Add link
+class ExternalReference(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_bajcvqteiard>`__.
     """
 
     _properties = OrderedDict([
@@ -50,10 +49,9 @@ class ExternalReference(_STIXBase):
                 )
 
 
-class KillChainPhase(_STIXBase):
-    # TODO: Add link
+class KillChainPhase(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_i4tjv75ce50h>`__.
     """
 
     _properties = OrderedDict([
@@ -62,10 +60,9 @@ class KillChainPhase(_STIXBase):
     ])
 
 
-class GranularMarking(_STIXBase):
-    # TODO: Add link
+class GranularMarking(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_robezi5egfdr>`__.
     """
 
     _properties = OrderedDict([
@@ -79,20 +76,19 @@ class GranularMarking(_STIXBase):
         self._check_at_least_one_property(['lang', 'marking_ref'])
 
 
-class LanguageContent(_STIXBase):
-    # TODO: Add link
+class LanguageContent(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_nfwr8z9ax2bi>`__.
     """
 
     _type = 'language-content'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('spec_version', StringProperty(fixed='2.1')),
         ('id', IDProperty(_type, spec_version='2.1')),
         ('created_by_ref', ReferenceProperty(valid_types='identity', spec_version='2.1')),
-        ('created', TimestampProperty(default=lambda: NOW, precision='millisecond')),
-        ('modified', TimestampProperty(default=lambda: NOW, precision='millisecond')),
+        ('created', TimestampProperty(default=lambda: NOW, precision='millisecond', precision_constraint='min')),
+        ('modified', TimestampProperty(default=lambda: NOW, precision='millisecond', precision_constraint='min')),
         ('object_ref', ReferenceProperty(valid_types=["SCO", "SDO", "SRO"], spec_version='2.1', required=True)),
         # TODO: 'object_modified' it MUST be an exact match for the modified time of the STIX Object (SRO or SDO) being referenced.
         ('object_modified', TimestampProperty(precision='millisecond')),
@@ -107,10 +103,9 @@ class LanguageContent(_STIXBase):
     ])
 
 
-class TLPMarking(_STIXBase):
-    # TODO: Add link
+class TLPMarking(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_yd3ar14ekwrs>`__.
     """
 
     _type = 'tlp'
@@ -119,10 +114,9 @@ class TLPMarking(_STIXBase):
     ])
 
 
-class StatementMarking(_STIXBase):
-    # TODO: Add link
+class StatementMarking(_STIXBase21):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_3ru8r05saera>`__.
     """
 
     _type = 'statement'
@@ -150,19 +144,18 @@ class MarkingProperty(Property):
             raise ValueError("must be a Statement, TLP Marking or a registered marking.")
 
 
-class MarkingDefinition(_STIXBase, _MarkingsMixin):
-    # TODO: Add link
+class MarkingDefinition(_STIXBase21, _MarkingsMixin):
     """For more detailed information on this object's properties, see
-    `the STIX 2.1 specification <link here>`__.
+    `the STIX 2.1 specification <https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_hr5vgqxjk7ns>`__.
     """
 
     _type = 'marking-definition'
     _properties = OrderedDict([
-        ('type', TypeProperty(_type)),
+        ('type', TypeProperty(_type, spec_version='2.1')),
         ('spec_version', StringProperty(fixed='2.1')),
         ('id', IDProperty(_type)),
         ('created_by_ref', ReferenceProperty(valid_types='identity', spec_version='2.1')),
-        ('created', TimestampProperty(default=lambda: NOW, precision='millisecond')),
+        ('created', TimestampProperty(default=lambda: NOW, precision='millisecond', precision_constraint='min')),
         ('external_references', ListProperty(ExternalReference)),
         ('object_marking_refs', ListProperty(ReferenceProperty(valid_types='marking-definition', spec_version='2.1'))),
         ('granular_markings', ListProperty(GranularMarking)),
@@ -215,7 +208,7 @@ def CustomMarking(type='x-custom-marking', properties=None):
 
     """
     def wrapper(cls):
-        return _custom_marking_builder(cls, type, properties, '2.1')
+        return _custom_marking_builder(cls, type, properties, '2.1', _STIXBase21)
     return wrapper
 
 
