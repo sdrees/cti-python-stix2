@@ -40,7 +40,7 @@ class ExternalReference(_STIXBase20):
         ('source_name', StringProperty(required=True)),
         ('description', StringProperty()),
         ('url', StringProperty()),
-        ('hashes', HashesProperty()),
+        ('hashes', HashesProperty(spec_version='2.0')),
         ('external_id', StringProperty()),
     ])
 
@@ -124,11 +124,11 @@ class MarkingDefinition(_STIXBase20, _MarkingsMixin):
         ('id', IDProperty(_type, spec_version='2.0')),
         ('created_by_ref', ReferenceProperty(valid_types='identity', spec_version='2.0')),
         ('created', TimestampProperty(default=lambda: NOW)),
+        ('definition_type', StringProperty(required=True)),
+        ('definition', MarkingProperty(required=True)),
         ('external_references', ListProperty(ExternalReference)),
         ('object_marking_refs', ListProperty(ReferenceProperty(valid_types='marking-definition', spec_version='2.0'))),
         ('granular_markings', ListProperty(GranularMarking)),
-        ('definition_type', StringProperty(required=True)),
-        ('definition', MarkingProperty(required=True)),
     ])
 
     def __init__(self, **kwargs):

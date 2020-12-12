@@ -1,6 +1,53 @@
 CHANGELOG
 =========
 
+2.1.0 - 2020-11-20
+
+* #337 Switches fuzzywuzzy dependency for rapidfuzz (@maxbachmann)
+* #430 Adds ability to mix single objects and lists in the Bundle constructor
+* #445, #475 Adds ability to calculate semantic equivalence of indicator patterns
+* #449 Adds ability to calculate semantic equivalence of entire graphs of objects
+* #427 Fixes protocol_family property on network socket extension
+* #436 Fixes pattern visitor to handle expressions with both AND and OR
+* #431 Fixes bug when adding custom object to FileSystemSink if the object type
+  hasn't been registered
+* #439 Fixes bug with custom wrapped classes not retaining their name (@maybe-sybr)
+* #438 Fixes bug with patterns when the object path contains numeric index steps
+* #454 Fixes stix2.patterns.make_constant() to create TimestampConstants
+* #455 Fixes bug with AND comparisons in patterns
+* #460 Fixes bug when retrieving custom object from TAXIICollectionSource if
+  the object type hasn't been registered
+* #444 Fixes bug so CompositeDataSource and deduplicate() handle unversioned
+  objects correctly
+* #467 Fixes bug in semantic equivalence when Location objects don't have
+  latitude and longitude properties
+* #470 Fixes bug where Sighting's where_sighted_refs property couldn't point to
+  a Location object
+* #473 Fixes typo in name of X509V3ExtensionsType class
+* #474 Fixes order of object properties when serialized to match examples from
+  the STIX specification
+
+2.0.2 - 2020-07-07
+
+* #423 Fixes issue with six dependency.
+
+2.0.1 - 2020-07-06
+
+* Fixes issue with PyPI.
+
+2.0.0 - 2020-07-06
+
+* #418 Drops support for Python versions older than 3.5
+* #397 Drops python-dateutil dependency to just use built-in datetime instead
+* #392, #402 Fixes bugs with deterministic ID generation
+* #393 Fixes bug when using SSDEEP hashes
+* #404 Fixes bug with "import *"
+* #400 Fixes bug with pattern builder and STIX 2.0 Start/Stop timestamps
+* #407 Fixes bug to allow granular markings with 'id' as selector
+* #409 Fixes bug with 2.1 object reference properties
+* #401 Fixes bug where some objects can be versioned and revoked that shouldn't
+* #417 Improves efficiency of ListProperty
+
 1.4.0 - 2020-04-03
 
 * #347, #355, #356, #357, #358, #360, #362, #369, #370, #379, #374, #384 Updates STIX 2.1 support to CS01

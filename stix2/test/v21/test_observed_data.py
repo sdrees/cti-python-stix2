@@ -1,6 +1,5 @@
 import datetime as dt
 import re
-import uuid
 
 import pytest
 import pytz
@@ -46,7 +45,7 @@ def test_observed_data_example():
         objects={
             "0": {
                 "type": "file",
-                "id": "file--5956efbb-a7b0-566d-a7f9-a202eb05c70f",
+                "id": "file--7af1312c-4402-5d2f-b169-b118d73b85c4",
                 "name": "foo.exe",
             },
         },
@@ -102,12 +101,12 @@ def test_observed_data_example_with_refs():
         objects={
             "0": {
                 "type": "file",
-                "id": "file--5956efbb-a7b0-566d-a7f9-a202eb05c70f",
+                "id": "file--7af1312c-4402-5d2f-b169-b118d73b85c4",
                 "name": "foo.exe",
             },
             "1": {
                 "type": "directory",
-                "id": "directory--536a61a4-0934-516b-9aad-fcbb75e0583a",
+                "id": "directory--ee97f78e-7e2b-5b3d-bcbd-5692968cacea",
                 "path": "/usr/home",
                 "contains_refs": ["file--5956efbb-a7b0-566d-a7f9-a202eb05c70f"],
             },
@@ -719,7 +718,7 @@ def test_directory_example():
     assert dir1.ctime == dt.datetime(2015, 12, 21, 19, 0, 0, tzinfo=pytz.utc)
     assert dir1.mtime == dt.datetime(2015, 12, 24, 19, 0, 0, tzinfo=pytz.utc)
     assert dir1.atime == dt.datetime(2015, 12, 21, 20, 0, 0, tzinfo=pytz.utc)
-    assert dir1.contains_refs == ["file--9d050a3b-72cd-5b57-bf18-024e74e1e5eb"]
+    assert dir1.contains_refs == ["file--c6ae2cf8-92d3-56d0-a25f-713efad643a7"]
 
 
 def test_directory_example_ref_error():
@@ -747,7 +746,7 @@ def test_domain_name_example():
     )
 
     assert dn2.value == "example.com"
-    assert dn2.resolves_to_refs == ["domain-name--02af94ea-7e38-5718-87c3-5cc023e3d49d"]
+    assert dn2.resolves_to_refs == ["domain-name--5b5803bf-a7eb-5076-b799-96aa574c44eb"]
 
 
 def test_domain_name_example_invalid_ref_type():
@@ -783,6 +782,22 @@ def test_file_example():
     assert f.ctime == dt.datetime(2016, 12, 21, 19, 0, 0, tzinfo=pytz.utc)
     assert f.mtime == dt.datetime(2016, 12, 24, 19, 0, 0, tzinfo=pytz.utc)
     assert f.atime == dt.datetime(2016, 12, 21, 20, 0, 0, tzinfo=pytz.utc)
+
+
+def test_file_ssdeep_example():
+    f = stix2.v21.File(
+        name="example.dll",
+        hashes={
+            "SHA-256": "ceafbfd424be2ca4a5f0402cae090dda2fb0526cf521b60b60077c0f622b285a",
+            "SSDEEP": "96:gS/mFkCpXTWLr/PbKQHbr/S/mFkCpXTWLr/PbKQHbrB:Tu6SXTWGQHbeu6SXTWGQHbV",
+        },
+        size=1024,
+    )
+
+    assert f.name == "example.dll"
+    assert f.size == 1024
+    assert f.hashes["SHA-256"] == "ceafbfd424be2ca4a5f0402cae090dda2fb0526cf521b60b60077c0f622b285a"
+    assert f.hashes["SSDEEP"] == "96:gS/mFkCpXTWLr/PbKQHbr/S/mFkCpXTWLr/PbKQHbrB:Tu6SXTWGQHbeu6SXTWGQHbV"
 
 
 def test_file_example_with_NTFSExt():
@@ -882,6 +897,27 @@ def test_file_example_with_RasterImageExt_Object():
     assert f.name == "qwerty.jpeg"
     assert f.extensions["raster-image-ext"].bits_per_pixel == 123
     assert f.extensions["raster-image-ext"].exif_tags["XResolution"] == 4928
+
+
+def test_file_with_archive_ext_object():
+    ad = stix2.v21.Directory(path="archived/path")
+    f_obj = stix2.v21.File(
+        name="foo", extensions={
+            "archive-ext": {
+                "contains_refs": [ad, ],
+            },
+        },
+    )
+    f_ref = stix2.v21.File(
+        name="foo", extensions={
+            "archive-ext": {
+                "contains_refs": [ad.id, ],
+            },
+        },
+    )
+
+    assert f_obj["id"] == f_ref["id"]
+    assert f_obj["extensions"]["archive-ext"]["contains_refs"][0] == ad["id"]
 
 
 RASTER_IMAGE_EXT = """{
@@ -1032,7 +1068,7 @@ def test_ipv4_address_valid_refs():
     )
 
     assert ip4.value == "177.60.40.7"
-    assert ip4.resolves_to_refs == ["mac-addr--a85820f7-d9b7-567a-a3a6-dedc34139342", "mac-addr--9a59b496-fdeb-510f-97b5-7137210bc699"]
+    assert ip4.resolves_to_refs == ["mac-addr--f72d7d00-86bd-5cd2-8c86-52f7a83bef62", "mac-addr--875ad625-177b-5c2a-9101-d44b0ad55938"]
 
 
 def test_ipv4_address_example_cidr():
@@ -1103,7 +1139,6 @@ def test_network_traffic_socket_example():
     h = stix2.v21.SocketExt(
         is_listening=True,
         address_family="AF_INET",
-        protocol_family="PF_INET",
         socket_type="SOCK_STREAM",
     )
     nt = stix2.v21.NetworkTraffic(
@@ -1113,7 +1148,6 @@ def test_network_traffic_socket_example():
     )
     assert nt.extensions['socket-ext'].is_listening
     assert nt.extensions['socket-ext'].address_family == "AF_INET"
-    assert nt.extensions['socket-ext'].protocol_family == "PF_INET"
     assert nt.extensions['socket-ext'].socket_type == "SOCK_STREAM"
 
 
@@ -1121,7 +1155,6 @@ def test_correct_socket_options():
     se1 = stix2.v21.SocketExt(
         is_listening=True,
         address_family="AF_INET",
-        protocol_family="PF_INET",
         socket_type="SOCK_STREAM",
         options={"ICMP6_RCVTIMEO": 100},
     )
@@ -1136,7 +1169,6 @@ def test_incorrect_socket_options():
         stix2.v21.SocketExt(
             is_listening=True,
             address_family="AF_INET",
-            protocol_family="PF_INET",
             socket_type="SOCK_STREAM",
             options={"RCVTIMEO": 100},
         )
@@ -1146,7 +1178,6 @@ def test_incorrect_socket_options():
         stix2.v21.SocketExt(
             is_listening=True,
             address_family="AF_INET",
-            protocol_family="PF_INET",
             socket_type="SOCK_STREAM",
             options={"SO_RCVTIMEO": '100'},
         )
@@ -1453,133 +1484,3 @@ def test_objects_deprecation():
                 },
             },
         )
-
-
-def test_deterministic_id_same_extra_prop_vals():
-    email_addr_1 = stix2.v21.EmailAddress(
-        value="john@example.com",
-        display_name="Johnny Doe",
-    )
-
-    email_addr_2 = stix2.v21.EmailAddress(
-        value="john@example.com",
-        display_name="Johnny Doe",
-    )
-
-    assert email_addr_1.id == email_addr_2.id
-
-    uuid_obj_1 = uuid.UUID(email_addr_1.id[-36:])
-    assert uuid_obj_1.variant == uuid.RFC_4122
-    assert uuid_obj_1.version == 5
-
-    uuid_obj_2 = uuid.UUID(email_addr_2.id[-36:])
-    assert uuid_obj_2.variant == uuid.RFC_4122
-    assert uuid_obj_2.version == 5
-
-
-def test_deterministic_id_diff_extra_prop_vals():
-    email_addr_1 = stix2.v21.EmailAddress(
-        value="john@example.com",
-        display_name="Johnny Doe",
-    )
-
-    email_addr_2 = stix2.v21.EmailAddress(
-        value="john@example.com",
-        display_name="Janey Doe",
-    )
-
-    assert email_addr_1.id == email_addr_2.id
-
-    uuid_obj_1 = uuid.UUID(email_addr_1.id[-36:])
-    assert uuid_obj_1.variant == uuid.RFC_4122
-    assert uuid_obj_1.version == 5
-
-    uuid_obj_2 = uuid.UUID(email_addr_2.id[-36:])
-    assert uuid_obj_2.variant == uuid.RFC_4122
-    assert uuid_obj_2.version == 5
-
-
-def test_deterministic_id_diff_contributing_prop_vals():
-    email_addr_1 = stix2.v21.EmailAddress(
-        value="john@example.com",
-        display_name="Johnny Doe",
-    )
-
-    email_addr_2 = stix2.v21.EmailAddress(
-        value="jane@example.com",
-        display_name="Janey Doe",
-    )
-
-    assert email_addr_1.id != email_addr_2.id
-
-    uuid_obj_1 = uuid.UUID(email_addr_1.id[-36:])
-    assert uuid_obj_1.variant == uuid.RFC_4122
-    assert uuid_obj_1.version == 5
-
-    uuid_obj_2 = uuid.UUID(email_addr_2.id[-36:])
-    assert uuid_obj_2.variant == uuid.RFC_4122
-    assert uuid_obj_2.version == 5
-
-
-def test_deterministic_id_no_contributing_props():
-    email_msg_1 = stix2.v21.EmailMessage(
-        is_multipart=False,
-    )
-
-    email_msg_2 = stix2.v21.EmailMessage(
-        is_multipart=False,
-    )
-
-    assert email_msg_1.id != email_msg_2.id
-
-    uuid_obj_1 = uuid.UUID(email_msg_1.id[-36:])
-    assert uuid_obj_1.variant == uuid.RFC_4122
-    assert uuid_obj_1.version == 4
-
-    uuid_obj_2 = uuid.UUID(email_msg_2.id[-36:])
-    assert uuid_obj_2.variant == uuid.RFC_4122
-    assert uuid_obj_2.version == 4
-
-
-def test_id_gen_recursive_dict_conversion_1():
-    file_observable = stix2.v21.File(
-        name="example.exe",
-        size=68 * 1000,
-        magic_number_hex="50000000",
-        hashes={
-            "SHA-256": "841a8921140aba50671ebb0770fecc4ee308c4952cfeff8de154ab14eeef4649",
-        },
-        extensions={
-            "windows-pebinary-ext": stix2.v21.WindowsPEBinaryExt(
-                pe_type="exe",
-                machine_hex="014c",
-                sections=[
-                    stix2.v21.WindowsPESection(
-                        name=".data",
-                        size=4096,
-                        entropy=7.980693,
-                        hashes={"SHA-256": "6e3b6f3978e5cd96ba7abee35c24e867b7e64072e2ecb22d0ee7a6e6af6894d0"},
-                    ),
-                ],
-            ),
-        },
-    )
-
-    assert file_observable.id == "file--5219d93d-13c1-5f1f-896b-039f10ec67ea"
-
-
-def test_id_gen_recursive_dict_conversion_2():
-    wrko = stix2.v21.WindowsRegistryKey(
-        values=[
-            stix2.v21.WindowsRegistryValueType(
-                name="Foo",
-                data="qwerty",
-            ),
-            stix2.v21.WindowsRegistryValueType(
-                name="Bar",
-                data="42",
-            ),
-        ],
-    )
-
-    assert wrko.id == "windows-registry-key--c087d9fe-a03e-5922-a1cd-da116e5b8a7b"
